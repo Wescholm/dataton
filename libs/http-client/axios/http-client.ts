@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import { HttpsProxyAgent } from "https-proxy-agent";
-import { Logger, LogLevel} from "../../logger";
+import { Logger, LogLevel } from "../../logger/logger";
 
 export interface IAxiosResponse {
     data: any;

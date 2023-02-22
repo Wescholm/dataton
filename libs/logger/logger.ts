@@ -1,10 +1,10 @@
 import chalk from "chalk";
 
 export enum LogLevel {
-    ERROR = "error",
-    WARN = "warn",
-    INFO = "info",
-    DEBUG = "debug",
+    ERROR = "ERROR",
+    WARN = "WARN",
+    INFO = "INFO",
+    DEBUG = "DEBUG",
 }
 
 export interface LoggerOptions {
