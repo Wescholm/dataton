@@ -1,0 +1,22 @@
+{
+  "name": "@dataton/google-place-details",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "exports": "./index.js",
+  "engines": {
+    "node": ">=14.16"
+  },
+  "scripts": {
+    "start": "ts-node-esm src/index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "typescript": "^4.9.5"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1"
+  }
+}
