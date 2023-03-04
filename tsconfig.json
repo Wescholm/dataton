@@ -1,17 +1,26 @@
 {
   "compilerOptions": {
-    "target": "es2022",
-    "module": "commonjs",
+    "target": "es2021",
+    "module": "node16",
+    "moduleResolution": "node16",
     "outDir": "./dist",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "lib": ["es2021"]
   },
   "include": [
     "libs/**/*",
-    "platforms/**/*"
+    "platforms/**/*",
+    "aws/**/*",
+    "core/**/*",
   ],
   "exclude": [
     "node_modules"
-  ]
+  ],
+  "ts-node": {
+    "transpileOnly": true,
+    "files": true,
+    "experimentalResolver": true
+  }
 }

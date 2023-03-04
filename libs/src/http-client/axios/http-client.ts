@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import { HttpsProxyAgent } from "https-proxy-agent";
-import { Logger, LogLevel } from "../../logger/logger";
+import { Logger, LogLevel } from "../../logger/logger.js";
 
 export interface IAxiosResponse {
     data: any;
@@ -17,7 +17,7 @@ export class HttpClient {
             level: LogLevel.INFO,
             prefix: "HttpClient"
         });
-        const validateStatus = () => false; // Don't throw on non-2xx responses
+        const validateStatus = () => true; // Don't throw on non-2xx responses
         if (proxyUrl) {
             const proxyAgent = new HttpsProxyAgent(proxyUrl);
             this.axios = axios.create({

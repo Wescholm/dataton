@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "paths": {
+      "@dataton/libs/http-client": ["libs/src/http-client/*"]
+    }
+  },
+  "exclude": ["dist", "node_modules"],
+  "include": ["src"]
+}
