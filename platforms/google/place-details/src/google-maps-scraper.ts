@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import * as readline from 'readline';
 import { HttpClient } from "../../../../libs/src/http-client";
 import { SequelizeManager } from "../../../../libs/src/sequelize/sequelize";
 import { IGoogleSearchPlace } from "../../../../interfaces";
@@ -13,6 +14,12 @@ export interface IGoogleMapsConfig {
     apiKeys: string[];
     proxyUrl?: string;
     sequelizeManager: SequelizeManager;
+    maxRetries?: number;
+}
+
+export interface IAddPlacePayload {
+    place_id: string;
+    country: string;
 }
 
 export interface INearbySearchPayload {
@@ -25,15 +32,24 @@ export interface INearbySearchPayload {
     nextPageToken?: string;
 }
 
+interface INearbySearchResponse {
+    html_attributions: string[];
+    next_page_token: string;
+    results: IGoogleSearchPlace[];
+    status: string;
+}
+
 export class GoogleMapsScraper {
     private readonly httpClient: HttpClient;
     private readonly sequelizeManager: SequelizeManager;
     private readonly apiKeys: string[];
-    private DEFAULT_RADIUS: string = "5000";
+    private readonly maxRetries: number;
+    private DEFAULT_RADIUS: string = "50000";
 
     constructor(config: IGoogleMapsConfig) {
         this.httpClient = new HttpClient(config.proxyUrl);
         this.sequelizeManager = config.sequelizeManager;
+        this.maxRetries = config.maxRetries || 1
         this.apiKeys = config.apiKeys;
     }
 
@@ -41,11 +57,14 @@ export class GoogleMapsScraper {
         const url = new URL(process.env.GOOGLE_MAPS_API_URL + "/place/details/json");
         url.searchParams.append("placeid", placeId);
         url.searchParams.append("key", this.getRandomApiKey());
-        const { data } = await this.httpClient.get(url.toString());
+        const { data } = await this.httpClient.get({
+            url: url.toString(),
+            maxRetries: this.maxRetries
+        });
         return data;
     }
 
-    public async nearbySearch(payload: INearbySearchPayload): Promise<any> {
+    public async nearbySearch(payload: INearbySearchPayload): Promise<INearbySearchResponse> {
         const { location, rankby, radius, nextPageToken } = payload;
         const url = new URL(process.env.GOOGLE_MAPS_API_URL + "/place/nearbysearch/json")
         url.searchParams.append("location", `${location.lat},${location.lng}`);
@@ -57,15 +76,21 @@ export class GoogleMapsScraper {
         if (nextPageToken) {
             url.searchParams.append("pagetoken", nextPageToken);
         }
-        const { data } = await this.httpClient.get(url.toString());
+        const { data } = await this.httpClient.get({
+            url: url.toString(),
+            maxRetries: this.maxRetries
+        });
         return data;
     }
 
-    public async getCoordinates(): Promise<number[][]> {
-        const _path = path.join(__dirname, "coordinates.json")
-        const coordinates = fs.readFileSync(_path, "utf8");
-        const json = JSON.parse(coordinates);
-        return json.map(c => eval(c));
+    public async *streamCoordinates(): AsyncGenerator<number[]> {
+        const pathToFile = path.join(__dirname, "coordinates.txt")
+        const lineReader = readline.createInterface({
+            input: fs.createReadStream(pathToFile)
+        });
+        for await (const line of lineReader) {
+            yield eval(line);
+        }
     }
 
     private readonly getRandomApiKey = (): string => {
@@ -73,7 +98,7 @@ export class GoogleMapsScraper {
         return this.apiKeys[randomIndex];
     }
 
-    public async getPlacesByCoordinates(coordinates: number[]): Promise<any[]> {
+    public async getPlacesByCoordinates(coordinates: number[]): Promise<IGoogleSearchPlace[]> {
         const places: IGoogleSearchPlace[] = [];
         const [lat, lng] = coordinates;
         for (const rankBy of [SearchRankBy.prominence, SearchRankBy.distance]) {
@@ -82,7 +107,7 @@ export class GoogleMapsScraper {
                 rankby: rankBy
             }
             do {
-                const { results, next_page_token } = await this.nearbySearch(payload);
+                const { results, next_page_token }: INearbySearchResponse = await this.nearbySearch(payload);
                 payload.nextPageToken = next_page_token;
                 places.push(...results);
             } while (payload.nextPageToken)
@@ -93,12 +118,14 @@ export class GoogleMapsScraper {
     public async getAllPlaceIds(): Promise<any[]> {
         const GooglePlaces = this.sequelizeManager.getModel(process.env.PSQL_TABLE_NAME);
         const places = await GooglePlaces.findAll();
-        return places.map(p => p.dataValues.id);
+        return places.map(p => p.dataValues.placeId);
     }
 
-    public async addPlace({ id, country }): Promise<void> {
+    public async addPlacesToDb(
+      places: Partial<IAddPlacePayload>[]
+    ): Promise<void> {
         const GooglePlaces = this.sequelizeManager.getModel(process.env.PSQL_TABLE_NAME);
-        await GooglePlaces.create({ id, country });
+        await GooglePlaces.bulkCreate(places, { ignoreDuplicates: true })
     }
 
     public async isPlaceExists(id: string): Promise<boolean> {

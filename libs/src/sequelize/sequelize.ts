@@ -4,6 +4,8 @@ dotenv.config({ path: path.join(__dirname, "..", ".env") });
 import { Sequelize, Dialect } from 'sequelize';
 import { GOOGLE_PLACES_TABLE } from "./sequelize.tables";
 import { GOOGLE_PLACES_MODEL } from "./sequelize.models";
+import * as process from "process";
+import { LogLevel } from "../logger/logger";
 
 export interface ISequelizeConfig {
     dialect: string;
@@ -26,6 +28,7 @@ export class SequelizeManager {
             database,
             username,
             password,
+            logging: process.env.LOG_LEVEL == LogLevel.DEBUG as any
         });
 
         this.sequelize.define(GOOGLE_PLACES_TABLE, GOOGLE_PLACES_MODEL);

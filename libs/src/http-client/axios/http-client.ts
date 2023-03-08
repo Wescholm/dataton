@@ -7,6 +7,12 @@ export interface IAxiosResponse {
     status: number;
 }
 
+export interface IAxiosRequestPayload {
+    url: string;
+    payload?: any;
+    maxRetries?: number;
+}
+
 export class HttpClient {
 
     private readonly axios: AxiosInstance;
@@ -14,7 +20,7 @@ export class HttpClient {
 
     constructor(proxyUrl?: string) {
         this.logger = new Logger({
-            level: LogLevel.INFO,
+            level: LogLevel[process.env.LOG_LEVEL],
             prefix: "HttpClient"
         });
         const validateStatus = () => true; // Don't throw on non-2xx responses
@@ -31,17 +37,42 @@ export class HttpClient {
         }
     }
 
-    public async get(url: string): Promise<IAxiosResponse> {
-        const response = await this.axios.get(url);
-        const { status, data } = response;
-        this.logger.debug(`GET ${url} ${status}`);
-        return { data, status };
+    public async get(payload: IAxiosRequestPayload): Promise<IAxiosResponse> {
+        return this.retryWrapper(payload, async () => {
+            const response = await this.axios.get(payload.url);
+            const { status, data } = response;
+            this.logger.debug(`GET ${payload.url} ${status}`);
+            return { data, status };
+        });
     }
 
-    public async post(url: string, payload: any): Promise<IAxiosResponse> {
-        const response = await this.axios.post(url, payload);
-        const { status, data } = response;
-        this.logger.debug(`POST ${url} ${status}`);
-        return { data, status };
+    public async post(payload: IAxiosRequestPayload): Promise<IAxiosResponse> {
+        return this.retryWrapper(payload, async () => {
+            const response = await this.axios.post(payload.url, payload.payload);
+            const { status, data } = response;
+            this.logger.debug(`POST ${payload.url} ${status}`);
+            return { data, status };
+        });
+    }
+
+    private async retryWrapper(
+      payload: IAxiosRequestPayload,
+      request: Function
+    ): Promise<IAxiosResponse> {
+        let retries = 0;
+        while (true) {
+            try {
+                return await request(payload);
+            } catch (err) {
+                const message = `Request failed: ${err.message}.`;
+                if (retries < payload.maxRetries) {
+                    this.logger.error(`${message}. Retrying...`);
+                    retries++;
+                } else {
+                    this.logger.error(`${message}. Max retries reached.`);
+                    throw err;
+                }
+            }
+        }
     }
 }

@@ -1,10 +1,10 @@
 import chalk from "chalk";
 
 export enum LogLevel {
-    ERROR = "ERROR",
-    WARN = "WARN",
-    INFO = "INFO",
-    DEBUG = "DEBUG",
+    ERROR = "0" as any,
+    WARN = "1" as any,
+    INFO = "2" as any,
+    DEBUG = "3" as any
 }
 
 export interface LoggerOptions {
@@ -13,18 +13,18 @@ export interface LoggerOptions {
 }
 
 export class Logger {
-    private readonly level: LogLevel;
+    private readonly level: any;
     private readonly prefix: string;
 
     constructor(options: LoggerOptions) {
-        this.level = options.level;
+        this.level = LogLevel[options.level];
         this.prefix = this.setPrefix(options.prefix);
     }
 
     log(level: LogLevel, message: string): void {
         if (this.shouldLog(level)) {
             const timestamp = new Date().toISOString();
-            const coloredLevel = this.getColor(level)(level.toUpperCase());
+            const coloredLevel = this.getColor(level)(LogLevel[level]);
             console.log(`${timestamp} [${coloredLevel}] ${this.prefix + message}`);
         }
     }

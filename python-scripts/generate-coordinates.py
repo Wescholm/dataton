@@ -1,5 +1,4 @@
 # %% Import dependencies
-import json
 import argparse
 import numpy as np
 import geopandas as gpd
@@ -45,4 +44,4 @@ points["json"] = points.apply(convert_to_text, axis=1)
 array = points["json"].values
 
 with open(output_path, "w") as f:
-    f.write(json.dumps(array.tolist()))
+    f.writelines([f"{s}\n" for s in array])
