@@ -1,7 +1,7 @@
 import path from "path";
 import * as dotenv from "dotenv";
 import * as minimist from "minimist";
-dotenv.config({ path: path.join(__dirname, "..", ".env") });
+dotenv.config({ path: path.join(__dirname, ".env") });
 import { SequelizeManager } from "../../../../libs/src/sequelize/sequelize";
 import { Logger } from "../../../../libs/src/logger/logger";
 import { Cache, ICacheConfig } from "../../../../libs/src/cache";

@@ -43,7 +43,6 @@ export class ExplorePlaces {
   public async run() {
     let totalCoordinates = 0;
     let handledCoordinates = 0;
-    const placeIds = await this.scraper.getAllPlaceIds();
     const queue = fastq.default(this.worker, this.concurrency);
     for await (const coordinates of this.scraper.streamCoordinates()) {
       const key = JSON.stringify(coordinates);
@@ -58,8 +57,7 @@ export class ExplorePlaces {
       queue.push(
         {
           that: this,
-          coordinates,
-          placeIds
+          coordinates
         },
         this.handleWorkerResponse
       );
@@ -91,12 +89,16 @@ export class ExplorePlaces {
     that.progressBar.increment();
   }
 
-  private async worker({ that, coordinates, placeIds }, cb): Promise<void> {
+  private async worker({ that, coordinates }, cb): Promise<void> {
     try {
       const places: IGoogleSearchPlace[] =
         await that.scraper.getPlacesByCoordinates(coordinates);
+      const existingPlaces = await that.scraper.getPlacesByIds(
+        places.map(p => p.place_id)
+      );
+      const existingPlaceIds = existingPlaces.map(p => p.placeId);
       const newPlaces = places.filter(
-        place => !placeIds.includes(place.place_id) // TODO: Change to db call
+        place => !existingPlaceIds.includes(place.place_id)
       );
       cb(null, { that, newPlaces, coordinates });
     } catch (e) {

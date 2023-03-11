@@ -139,6 +139,14 @@ export class GoogleMapsScraper {
     return places.map(p => p.dataValues.placeId);
   }
 
+  public async getPlacesByIds(ids: string[]): Promise<string[]> {
+    const GooglePlaces = this.sequelizeManager.getModel(
+      process.env.PSQL_TABLE_NAME
+    );
+    const places = await GooglePlaces.findAll({ where: { placeId: ids } });
+    return places.map(p => p.dataValues);
+  }
+
   public async addPlacesToDb(
     places: Partial<IAddPlacePayload>[]
   ): Promise<void> {
