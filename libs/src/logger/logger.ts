@@ -1,63 +1,65 @@
 import chalk from "chalk";
+import { getKeyByValue } from "../utils";
 
-export enum LogLevel {
-    ERROR = "0" as any,
-    WARN = "1" as any,
-    INFO = "2" as any,
-    DEBUG = "3" as any
+export const LOG_LEVEL = {
+    ERROR: 1,
+    WARN: 2,
+    INFO: 3,
+    DEBUG: 4
 }
 
 export interface LoggerOptions {
-    level: LogLevel;
+    level: string;
     prefix?: string
 }
 
 export class Logger {
-    private readonly level: any;
+    private readonly level: string;
     private readonly prefix: string;
 
     constructor(options: LoggerOptions) {
-        this.level = LogLevel[options.level];
+        this.level = options.level.toUpperCase();
         this.prefix = this.setPrefix(options.prefix);
     }
 
-    log(level: LogLevel, message: string): void {
+    log(level: number, message: string): void {
+        const logLevel: string = getKeyByValue(LOG_LEVEL, level);
         if (this.shouldLog(level)) {
             const timestamp = new Date().toISOString();
-            const coloredLevel = this.getColor(level)(LogLevel[level]);
+            const coloredLevel = this.getColor(level)(logLevel);
             console.log(`${timestamp} [${coloredLevel}] ${this.prefix + message}`);
         }
     }
 
     error(message: string): void {
-        this.log(LogLevel.ERROR, message);
+        this.log(LOG_LEVEL.ERROR, message);
     }
 
     warn(message: string): void {
-        this.log(LogLevel.WARN, message);
+        this.log(LOG_LEVEL.WARN, message);
     }
 
     info(message: string): void {
-        this.log(LogLevel.INFO, message);
+        this.log(LOG_LEVEL.INFO, message);
     }
 
     debug(message: string): void {
-        this.log(LogLevel.DEBUG, message);
+        this.log(LOG_LEVEL.DEBUG, message);
     }
 
-    private shouldLog(level: LogLevel): boolean {
-        return LogLevel[level] <= LogLevel[this.level];
+    private shouldLog(level: number): boolean {
+        return level <= LOG_LEVEL[this.level];
     }
 
-    private getColor(level: LogLevel): (message: string) => string {
+    private getColor(level: number): (message: string) => string {
         switch (level) {
-            case LogLevel.ERROR:
+            case LOG_LEVEL.ERROR:
                 return chalk.red;
-            case LogLevel.WARN:
+            case LOG_LEVEL.WARN:
                 return chalk.yellow;
-            case LogLevel.INFO:
+            case LOG_LEVEL.INFO:
                 return chalk.green;
-            case LogLevel.DEBUG:
+            case LOG_LEVEL.DEBUG:
                 return chalk.blue;
             default:
                 return chalk.white;

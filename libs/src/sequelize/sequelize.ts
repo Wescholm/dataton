@@ -5,7 +5,7 @@ import { Sequelize, Dialect } from 'sequelize';
 import { GOOGLE_PLACES_TABLE } from "./sequelize.tables";
 import { GOOGLE_PLACES_MODEL } from "./sequelize.models";
 import * as process from "process";
-import { LogLevel } from "../logger/logger";
+import { LOG_LEVEL } from "../logger/logger";
 
 export interface ISequelizeConfig {
     dialect: string;
@@ -21,6 +21,7 @@ export class SequelizeManager {
 
     constructor(config: ISequelizeConfig) {
         const { dialect, host, port, database, username, password } = config;
+        const shouldLog = LOG_LEVEL[process.env.LOG_LEVEL] == LOG_LEVEL.DEBUG;
         this.sequelize = new Sequelize({
             dialect: dialect as Dialect,
             host,
@@ -28,7 +29,7 @@ export class SequelizeManager {
             database,
             username,
             password,
-            logging: process.env.LOG_LEVEL == LogLevel.DEBUG as any
+            logging: shouldLog
         });
 
         this.sequelize.define(GOOGLE_PLACES_TABLE, GOOGLE_PLACES_MODEL);

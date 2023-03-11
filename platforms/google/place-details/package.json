@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "generate:coordinates": "python ../../../python-scripts/generate-coordinates.py --country=USA",
-    "start": "ts-node-esm src/index.ts"
+    "lint": "eslint '**/*.ts' --fix && prettier --write '**/*.ts'",
+    "generate:coordinates": "python ../../../python-scripts/generate-coordinates.py --country=USA"
   },
   "author": "",
   "license": "ISC",

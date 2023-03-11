@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import { HttpsProxyAgent } from "https-proxy-agent";
-import { Logger, LogLevel } from "../../logger/logger";
+import { Logger } from "../../logger/logger";
+import * as process from "process";
 
 export interface IAxiosResponse {
     data: any;
@@ -20,19 +21,17 @@ export class HttpClient {
 
     constructor(proxyUrl?: string) {
         this.logger = new Logger({
-            level: LogLevel[process.env.LOG_LEVEL],
+            level: process.env.LOG_LEVEL,
             prefix: "HttpClient"
         });
-        const validateStatus = () => true; // Don't throw on non-2xx responses
         if (proxyUrl) {
             const proxyAgent = new HttpsProxyAgent(proxyUrl);
             this.axios = axios.create({
                 httpsAgent: proxyAgent,
-                httpAgent: proxyAgent,
-                validateStatus
+                httpAgent: proxyAgent
             });
         } else {
-            this.axios = axios.create({ validateStatus });
+            this.axios = axios.create();
             this.logger.warn("Proxy not provided!");
         }
     }
