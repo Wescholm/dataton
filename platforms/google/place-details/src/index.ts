@@ -1,22 +1,12 @@
 import path from "path";
 import * as dotenv from "dotenv";
-import * as fastq from "fastq";
 import * as minimist from "minimist";
-dotenv.config({ path: path.join(__dirname, ".env") });
-import {
-  GoogleMapsScraper,
-  IAddPlacePayload,
-  IGoogleMapsConfig
-} from "./google-maps-scraper.js";
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 import { SequelizeManager } from "../../../../libs/src/sequelize/sequelize";
 import { Logger } from "../../../../libs/src/logger/logger";
 import { Cache, ICacheConfig } from "../../../../libs/src/cache";
-import { IGoogleSearchPlace } from "../../../../interfaces";
-
-interface IFindNewWorkerResponse {
-  newPlaces: IGoogleSearchPlace[];
-  coordinates: number[];
-}
+import { ExplorePlaces } from "./explore";
+import { GoogleMapsScraper, IGoogleMapsConfig } from "./google-maps-scraper";
 
 const argv = minimist.default(process.argv.slice(2), {
   string: ["country", "week"],
@@ -66,70 +56,23 @@ const scraperConfig: IGoogleMapsConfig = {
 
 const scraper = new GoogleMapsScraper(scraperConfig);
 
-const findNewPlaces = async (): Promise<void> => {
-  let totalCoordinates = 0;
-  const placeIds = await scraper.getAllPlaceIds();
-  const queue = fastq.default(findNewWorker, CONCURRENCY);
-  for await (const coordinates of scraper.streamCoordinates()) {
-    const key = JSON.stringify(coordinates);
-    if (cache.has(key)) {
-      logger.debug(`Coordinates ${key} are already handled. Skipping...`);
-      continue;
-    }
-    totalCoordinates++;
-    queue.push({ coordinates, placeIds }, handleNewPlacesResponse);
-  }
-  cache.set("coords_total", totalCoordinates);
-};
-
-const handleNewPlacesResponse = async (
-  err,
-  response: IFindNewWorkerResponse
-): Promise<void> => {
-  if (err) throw err;
-  const { newPlaces, coordinates } = response;
-  if (newPlaces.length > 0) {
-    const placeIds = [...new Set(newPlaces.map(place => place.place_id))];
-    logger.info(`Found ${placeIds.length} new places`);
-    const records: Partial<IAddPlacePayload>[] = placeIds.map(id => ({
-      placeId: id,
-      country: COUNTRY
-    }));
-    await scraper.addPlacesToDb(records);
-  }
-  cache.set(
-    JSON.stringify(coordinates),
-    { newPlaceIds: newPlaces.map(p => p.place_id), coordinates },
-    parseInt(process.env.CACHE_TTL)
-  );
-  const totalCoordinates = cache.get("coords_total");
-  const handledCoordinates = cache.get("coords_done") + 1;
-  const progress = (handledCoordinates / totalCoordinates) * 100;
-  logger.info(
-    `Handled ${handledCoordinates} of ${totalCoordinates} coordinates (${progress.toFixed(
-      2
-    )}%)`
-  );
-  cache.set("coords_done", handledCoordinates);
-};
-
-const findNewWorker = async ({ coordinates, placeIds }, cb): Promise<void> => {
-  try {
-    const places: IGoogleSearchPlace[] = await scraper.getPlacesByCoordinates(
-      coordinates
-    );
-    const newPlaces = places.filter(
-      place => !placeIds.includes(place.place_id)
-    );
-    cb(null, { newPlaces, coordinates });
-  } catch (e) {
-    cb(e);
-  }
-};
-
 const work = async (): Promise<void> => {
+  logger.info(`Starting Google Maps Scraper for ${COUNTRY} week ${WEEK}`);
   await sequelizeManager.authenticate();
-  await findNewPlaces();
+  const explorePlaces = new ExplorePlaces({
+    scraper,
+    cache,
+    logger,
+    sequelizeManager,
+    country: COUNTRY,
+    concurrency: CONCURRENCY
+  });
+  try {
+    await explorePlaces.run();
+  } catch (e) {
+    logger.error(`Error while running Google Maps Scraper - ${e.message}`);
+    process.exit(1);
+  }
 };
 
 work();
